@@ -1,0 +1,29 @@
+{
+	"algs": [
+		{
+			"name": "GeneralThompsonGaussian",
+			"alg_class": "GeneralThompson",
+			"active": true,
+			"params": {"distribution":{"name":"Kitten", "d":1}}
+		},
+		{
+			"name": "GeneralTopTwo",
+			"alg_class": "GeneralTopTwo",
+			"active": true,
+			"params": {"distribution":{"name":"Kitten", "d":1}}
+		}
+	],
+	"global": {
+		"exp_name": "Linear-Soare",
+		"T": 500,
+		"sigma":1.0,
+		"reps": 20,
+		"cpu": 20,
+		"parallelize": "ray",
+		"instance":{
+			"name":"entropy",
+			"params":{"K":20}
+		}
+	}
+}
+

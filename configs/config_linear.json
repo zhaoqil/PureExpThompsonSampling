@@ -1,0 +1,60 @@
+{
+	"algs": [
+		{
+			"name": "ThompsonSamplingLinear",
+			"alg_class": "ThompsonSampling",
+			"active": false,
+			"params": {}
+		},
+		{
+			"name": "TopTwoProjectionAlgorithm",
+			"alg_class": "TopTwoProjectionAlgorithm",
+			"active": false,
+			"params": {}
+		},
+		{
+			"name": "TopTwoThetaAlgorithm",
+			"alg_class": "TopTwoThetaAlgorithm",
+			"active": true,
+			"params": {}
+		},
+		{
+			"name": "XYStatic",
+			"alg_class": "XYStatic",
+			"active": false,
+			"params": {}
+		},
+		{
+			"name": "GeneralTopTwoLinear",
+			"alg_class": "GeneralTopTwoLinear",
+			"active": false,
+			"params": {}
+		},
+		{
+			"name": "GeneralThompsonGaussian",
+			"alg_class": "GeneralThompson",
+			"active": false,
+			"params": {"distribution":{"name":"Gaussian", "d":20}}
+		},
+		{
+			"name": "GeneralTopTwo",
+			"alg_class": "GeneralTopTwo",
+			"active": false,
+			"params": {"distribution":{"name":"Gaussian", "d":20}}
+		}
+	],
+	"global": {
+		"exp_name": "Linear-Soare",
+		"T": 4000,
+		"sigma":1.0,
+		"reps": 200,
+		"cpu": 60,
+		"parallelize": "mp",
+		"instance":{
+			"name":"soare",
+			"params":{"d":2,"alpha":0.1}
+		}
+	}
+}
+
+
