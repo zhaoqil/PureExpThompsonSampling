@@ -1,0 +1,6 @@
+.ipynb_checkpoints/
+*.png
+__pycache__/
+catboost_info/
+wandb/
+*.pkl
