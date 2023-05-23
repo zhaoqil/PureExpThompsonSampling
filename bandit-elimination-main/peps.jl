@@ -176,3 +176,39 @@ end
 function min_alt_active(pep::OSI_State, θ, Vinv)
     return min_alt_subset(pep, θ, Vinv, pep.active_arms)
 end
+
+
+#################################################################
+# Top-k BAI
+#################################################################
+
+using Combinatorics
+
+struct TopK
+    d::Int64
+    k::Int64
+end
+
+struct TopKState
+    indicator_vectors::Matrix{Float64}
+    theta::Vector{Float64}
+end
+
+function topk(topk::TopK)
+    Random.seed!(10)
+
+    # Generate all combinations of indices
+    all_combinations = collect(combinations(1:topk.d, topk.k))
+
+    # Create an array of zeros
+    indicator_vectors = zeros(length(all_combinations), topk.d)
+
+    # Set the relevant indices to one
+    for (i, indices) in enumerate(all_combinations)
+        indicator_vectors[i, indices] = 1
+    end
+
+    theta = rand(topk.d)
+
+    return TopKState(indicator_vectors, theta)
+end

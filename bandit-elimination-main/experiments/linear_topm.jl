@@ -2,7 +2,8 @@ using JLD2;
 using Distributed;
 using Printf;
 using IterTools;
-using Distributions
+using Distributions;
+using DelimitedFiles
 
 include("../thresholds.jl")
 include("../peps.jl")
@@ -14,37 +15,34 @@ include("../experiment_helpers.jl")
 include("../utils.jl")
 include("../envelope.jl")
 
-δ = 0.01
-d = 20
-K = 50
-m = 5  # for topm
+δ = 0.05
+d = 12
+K = 12
+m = 3  # for topm
 
 # for reproducibility
 rng = MersenneTwister(123)
 
 arms = Vector{Float64}[]
-mid = Int(ceil(d/2))
-for k = 1:mid
+for k = 1:d
     v = zeros(d)
     v[k] = 1.0
     push!(arms, v)
 end
 
-θ = zeros(d)
-θ[1] = 1
-θ[2:Int(mid/2)] .= 0.9
-θ[Int(mid/2)+1:mid] .= 0.8
-θ[mid+1:end] = rand(rng, d-mid) .- 1   # uniform in [-0.5,0.5]
+# mid = Int(ceil(d/2))
+# θ = zeros(d)
+# θ[1] = 1
+# θ[2:Int(mid/2)] .= 0.9
+# θ[Int(mid/2)+1:mid] .= 0.8
+# θ[mid+1:end] = rand(rng, d-mid) .- 1   # uniform in [-0.5,0.5]
 
-while length(arms) < K
-    v = zeros(d)
-    v[1] = 1100
-    while v'θ > 0.5
-        v = 2 .* rand(rng, d) .- 1   # Uniform in [-1,1]
-        v ./= norm(v)   # make sure unit norm
-    end
-    push!(arms, v)
-end
+alpha = 0.05
+θ = [1 - i * alpha for i in 0:d-1]
+
+println(arms)
+writedlm("/home/jupyter-zli9/PureExpThompsonSampling/theta_topm.csv", θ)
+writedlm("/home/jupyter-zli9/PureExpThompsonSampling/arms_topm.csv", arms)
 
 μ = [arm'θ for arm in arms]
 topm_arms = istar(Topm(arms, m), θ)
@@ -63,7 +61,7 @@ println("Optimal allocation: ", round.(w_star, digits=3))
 
 max_samples = 1e6
 
-repeats = 100;
+repeats = 5;
 seed = 123;
 
 function run()
@@ -79,65 +77,68 @@ function run()
         (((sampling, stopping, elim), i),) -> runit(seed + i, sampling, stopping, elim, θ, pep, β, δ), 
         Iterators.product(zip(sampling_rules, stopping_rules, elim_rules), 1:repeats),
     );
+    
+    data = collect(data)
+    writedlm("/home/jupyter-zli9/PureExpThompsonSampling/results_topm_500_oracle.txt", data, '\t')
 
-    dump_stats(pep, θ, δ, β, stopping_rules, sampling_rules, elim_rules, data, repeats);
+#     dump_stats(pep, θ, δ, β, stopping_rules, sampling_rules, elim_rules, data, repeats);
 
-    # save
-    isdir("experiments/results") || mkdir("experiments/results")
-    @save isempty(ARGS) ? "experiments/results/lin_$(typeof(pep))_$(typeof(sampling_rules[1]))_K$(K)_d$(d).dat" : ARGS[1] θ pep stopping_rules sampling_rules elim_rules data δ β repeats seed
+#     # save
+#     isdir("experiments/results") || mkdir("experiments/results")
+#     @save isempty(ARGS) ? "experiments/results/lin_$(typeof(pep))_$(typeof(sampling_rules[1]))_K$(K)_d$(d).dat" : ARGS[1] θ pep stopping_rules sampling_rules elim_rules data δ β repeats seed
 
 end
 
 #################################################
 # LinGapE
 #################################################
-elim_rules = [NoElim(), CompElim(), CompElim()]
-stopping_rules = [Force_Stopping(max_samples, LLR_Stopping()), Force_Stopping(max_samples, Elim_Stopping()),  Force_Stopping(max_samples, Elim_Stopping())]
-sampling_rules = [LinGapE(NoElimSR), LinGapE(NoElimSR), LinGapE(ElimSR)]
+# elim_rules = [NoElim()]
+# stopping_rules = [Force_Stopping(30000, NoStopping())]
+# sampling_rules = [LinGapE(NoElimSR)]
 
-run()
+# run()
 
 #################################################
 # LinGame
 #################################################
-elim_rules = [NoElim(), CompElim(), CompElim()]
-stopping_rules = [Force_Stopping(max_samples, LLR_Stopping()), Force_Stopping(max_samples, Elim_Stopping()),  Force_Stopping(max_samples, Elim_Stopping())]
-sampling_rules = [LinGame(CTracking, NoElimSR, false), LinGame(CTracking, NoElimSR, false), LinGame(CTracking, ElimSR, false)]
+# elim_rules = [NoElim()]
+# stopping_rules = [Force_Stopping(30000, NoStopping())]
+# sampling_rules = [LinGame(CTracking, NoElimSR, false)]
 
-run()
+# run()
 
-#################################################
-# LinGIFA
-#################################################
-elim_rules = [NoElim(), CompElim()]
-stopping_rules = [Force_Stopping(max_samples, LLR_Stopping()), Force_Stopping(max_samples, Elim_Stopping())]
-sampling_rules = [LinGIFA(), LinGIFA()]
+# #################################################
+# # LinGIFA
+# #################################################
+# elim_rules = [NoElim(), CompElim()]
+# stopping_rules = [Force_Stopping(max_samples, LLR_Stopping()), Force_Stopping(max_samples, Elim_Stopping())]
+# sampling_rules = [LinGIFA(), LinGIFA()]
 
-run()
+# run()
 
 #################################################
 # Oracle
 #################################################
-elim_rules = [NoElim(), CompElim()]
-stopping_rules = [Force_Stopping(max_samples, LLR_Stopping()), Force_Stopping(max_samples, Elim_Stopping())]
-sampling_rules = [FixedWeights(w_star), FixedWeights(w_star)]
+elim_rules = [NoElim()]
+stopping_rules = [Force_Stopping(30000, NoStopping())]
+sampling_rules = [FixedWeights(w_star)]
 
 run()
 
-#################################################
-# LazyTaS
-#################################################
-elim_rules = [NoElim(), CompElim(), CompElim()]
-stopping_rules = [Force_Stopping(max_samples, LLR_Stopping()), Force_Stopping(max_samples, Elim_Stopping()),  Force_Stopping(max_samples, Elim_Stopping())]
-sampling_rules = [LazyTaS(NoElimSR), LazyTaS(NoElimSR), LazyTaS(ElimSR)]
+# #################################################
+# # LazyTaS
+# #################################################
+# elim_rules = [NoElim(), CompElim(), CompElim()]
+# stopping_rules = [Force_Stopping(max_samples, LLR_Stopping()), Force_Stopping(max_samples, Elim_Stopping()),  Force_Stopping(max_samples, Elim_Stopping())]
+# sampling_rules = [LazyTaS(NoElimSR), LazyTaS(NoElimSR), LazyTaS(ElimSR)]
 
-run()
+# run()
 
-#################################################
-# FWS
-#################################################
-elim_rules = [NoElim(), CompElim(), CompElim()]
-stopping_rules = [Force_Stopping(max_samples, LLR_Stopping()), Force_Stopping(max_samples, Elim_Stopping()),  Force_Stopping(max_samples, Elim_Stopping())]
-sampling_rules = [FWSampling(NoElimSR), FWSampling(NoElimSR), FWSampling(ElimSR)]
+# #################################################
+# # FWS
+# #################################################
+# elim_rules = [NoElim(), CompElim(), CompElim()]
+# stopping_rules = [Force_Stopping(max_samples, LLR_Stopping()), Force_Stopping(max_samples, Elim_Stopping()),  Force_Stopping(max_samples, Elim_Stopping())]
+# sampling_rules = [FWSampling(NoElimSR), FWSampling(NoElimSR), FWSampling(ElimSR)]
 
-run()
+# run()

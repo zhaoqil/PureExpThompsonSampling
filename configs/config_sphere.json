@@ -1,0 +1,30 @@
+{
+	"algs": [
+		{
+			"name": "ThompsonSamplingLinear",
+			"alg_class": "ThompsonSampling",
+			"active": true,
+			"params": {}
+		},
+		{
+			"name": "TopTwoThetaAlgorithm",
+			"alg_class": "TopTwoThetaAlgorithm",
+			"active": true,
+			"params": {}
+		}
+	],
+	"global": {
+		"exp_name": "Linear-Sphere",
+		"T": 3000,
+		"sigma":1.0,
+		"reps": 5,
+		"cpu": 60,
+		"parallelize": "mp",
+		"instance":{
+			"name":"sphere",
+			"params":{"K":20,"d":6}
+		}
+	}
+}
+
+

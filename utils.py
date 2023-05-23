@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import distribution
-import library_concept
 import library_linear
 from scipy.stats import multivariate_normal as mvn
 
@@ -88,41 +87,10 @@ def get_alg(alg, X, Y, f_star, T, sigma, ix):
         params = alg['params']
         if cls == 'ThompsonSampling':
             return library_linear.ThompsonSampling(X, Y, f_star, T, sigma, name)
-        elif cls == 'TopTwoAlgorithm':
-            return library_linear.TopTwoAlgorithm(X, Y, f_star, T, sigma, name)
         elif cls == 'TopTwoThetaAlgorithm':
             return library_linear.TopTwoThetaAlgorithm(X, Y, f_star, T, sigma, name)
-        elif cls == 'TopTwoProjectionAlgorithm':
-            return library_linear.TopTwoProjectionAlgorithm(X, Y, f_star, T, sigma, name)
-        elif cls == 'XYStatic':
-            return library_linear.XYStatic(X, Y, f_star, T, sigma, name)
-        elif cls == 'XYAdaptive':
-            return library_linear.XYAdaptive(X, Y, f_star, T, sigma, name)
-        elif cls == 'GeneralTopTwoLinear':
-            return library_linear.GeneralTopTwoLinear(X, Y, f_star, T, sigma, name)
-        elif cls == 'GeneralThompson':
-            pi = distribution.get_distribution(params['distribution'])
-            if type(f_star) is np.ndarray:
-                gen_star = distribution.GenericFunction(lambda x: x@f_star, sigma)
-            elif type(f_star) is not distribution.GenericFunction:
-                raise Exception('f_star must be a GenericFunction object or a np.ndarray')
-            else:
-                gen_star = f_star
-            return library_concept.GeneralThompson(X, gen_star, pi, T, sigma, name)
-        elif cls == 'GeneralTopTwo':
-            pi = distribution.get_distribution(params['distribution'])
-            if type(f_star) is np.ndarray:
-                gen_star = distribution.GenericFunction(lambda x: x@f_star, sigma)
-            elif type(f_star) is not distribution.GenericFunction:
-                raise Exception('f_star must be a GenericFunction object or a np.ndarray')
-            else:
-                gen_star = f_star
-            return library_concept.GeneralTopTwo(X, gen_star, pi, T, sigma, name)
-
+        
 def prob_region(A, theta, Sigma):
     mu = -A@theta
     Sigma = A@Sigma@A.T
     return mvn.cdf(np.zeros(len(mu)), mean=mu, cov=Sigma)
-
-
-#ray job submit --address='128.208.6.83:6379' --working-dir . -- python run.py --path /home/lalitj/contextualbandits --config config_linear.json

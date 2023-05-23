@@ -70,7 +70,7 @@ function runit(seed, sampling, stopping, elim_rule::Union{NoElim,CompElim,StatEl
         if should_stop
             println("End ", alg_name, " -- seed ", seed, " -- samples ", sum(N), " -- time ", (time_ns() - start_time)/1e9, " s\n")
             # return (answer, copy(N), time_ns() - start_time, pep.elim_times, copy(All_N), rec_arr)
-            return [copy(All_N), rec_arr]
+            return [copy(N), rec_arr]
         end
 
         t += 1

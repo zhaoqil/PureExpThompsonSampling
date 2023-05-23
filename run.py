@@ -9,28 +9,27 @@ import matplotlib.pyplot as plt
 import numpy as np
 import multiprocessing as mp
 
-import library_concept
 import library_linear
 import instance
 
 import utils
 import json
-import wandb
+# import wandb
 
     
 
 def worker(alg, X, Y, f_star, T, sigma, ix):
     print('algorithm', alg, 'name', alg['name'])
     np.random.seed()
-    wandb.init(project="TTTS", 
-               name="experiment_run_{}".format(ix), 
-               group="experiment", 
-               config={ 
-                   "alg": alg, 
-               })
+    # wandb.init(project="TTTS", 
+    #            name="experiment_run_{}".format(ix), 
+    #            group="experiment", 
+    #            config={ 
+    #                "alg": alg, 
+    #            })
     algorithm_instance = utils.get_alg(alg, X, Y, f_star, T, sigma, ix)
     algorithm_instance.run(logging_period=100)
-    wandb.finish()
+    # wandb.finish()
     return algorithm_instance.arms_recommended, algorithm_instance.pulled
 
 if __name__=='__main__':
@@ -105,6 +104,8 @@ if __name__=='__main__':
         plt.subplot(1,2,2)
         plt.plot(np.mean(results_p, axis=0))
         d['algs'] = d_alg
+        
+    path = "/home/jupyter-zli9/PureExpThompsonSampling" # manually set path
     with open(path+f'/results_{exp_name}.pkl', 'wb') as f:
         pickle.dump(d,f)
 

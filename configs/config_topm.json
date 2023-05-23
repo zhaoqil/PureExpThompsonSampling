@@ -1,0 +1,30 @@
+{
+	"algs": [
+		{
+			"name": "ThompsonSamplingLinear",
+			"alg_class": "ThompsonSampling",
+			"active": false,
+			"params": {}
+		},
+		{
+			"name": "TopTwoThetaAlgorithm",
+			"alg_class": "TopTwoThetaAlgorithm",
+			"active": true,
+			"params": {}
+		}
+	],
+	"global": {
+		"exp_name": "Linear-Topm",
+		"T": 30000,
+		"sigma":1.0,
+		"reps": 5,
+		"cpu": 60,
+		"parallelize": "mp",
+		"instance":{
+			"name":"topk",
+			"params":{"d":12,"k":3}
+		}
+	}
+}
+
+

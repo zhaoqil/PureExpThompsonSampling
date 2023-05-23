@@ -5,7 +5,6 @@ using Distributed;
 using Printf;
 using IterTools;
 using DelimitedFiles;
-using NPZ;
 using Distributions
 
 include("../thresholds.jl")
@@ -61,10 +60,12 @@ end
 
 # LinGame vs LinGapE vs FWS vs LazyTaS vs Oracle
 elim_rules = [NoElim()]
-stopping_rules = [Force_Stopping(3000, NoStopping())]
-sampling_rules = [LinGame(CTracking, NoElimSR, false)]
+stopping_rules = [Force_Stopping(5000, NoStopping())]
+# sampling_rules = [LinGame(CTracking, NoElimSR, false)]
+sampling_rules = [LinGapE(NoElimSR)]
+# sampling_rules = [FixedWeights(w_star)]
 
-repeats = 100;
+repeats = 5;
 seed = 123;
 
 # One fake run for each algorithm
@@ -83,7 +84,7 @@ seed = 123;
 # dump_stats(pep, θ, δ, β, stopping_rules, sampling_rules, elim_rules, data, repeats);
 
 data = collect(data)
-writedlm("results_c.txt", data)
+writedlm("/home/jupyter-zli9/PureExpThompsonSampling/results_soare_500_LinGapE.txt", data)
 
 # save
 #isdir("experiments") || mkdir("experiments")
