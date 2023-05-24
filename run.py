@@ -80,6 +80,5 @@ if __name__=='__main__':
         plt.plot(np.mean(results_p, axis=0))
         d['algs'] = d_alg
         
-    path = "/home/jupyter-zli9/PureExpThompsonSampling" # manually set path
     with open(path+f'/results_{exp_name}.pkl', 'wb') as f:
         pickle.dump(d,f)

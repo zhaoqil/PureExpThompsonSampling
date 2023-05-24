@@ -100,15 +100,6 @@ end
 
 # run()
 
-# #################################################
-# # LinGIFA
-# #################################################
-# elim_rules = [NoElim(), CompElim()]
-# stopping_rules = [Force_Stopping(max_samples, LLR_Stopping()), Force_Stopping(max_samples, Elim_Stopping())]
-# sampling_rules = [LinGIFA(), LinGIFA()]
-
-# run()
-
 #################################################
 # Oracle
 #################################################
@@ -117,21 +108,3 @@ stopping_rules = [Force_Stopping(30000, NoStopping())]
 sampling_rules = [FixedWeights(w_star)]
 
 run()
-
-# #################################################
-# # LazyTaS
-# #################################################
-# elim_rules = [NoElim(), CompElim(), CompElim()]
-# stopping_rules = [Force_Stopping(max_samples, LLR_Stopping()), Force_Stopping(max_samples, Elim_Stopping()),  Force_Stopping(max_samples, Elim_Stopping())]
-# sampling_rules = [LazyTaS(NoElimSR), LazyTaS(NoElimSR), LazyTaS(ElimSR)]
-
-# run()
-
-# #################################################
-# # FWS
-# #################################################
-# elim_rules = [NoElim(), CompElim(), CompElim()]
-# stopping_rules = [Force_Stopping(max_samples, LLR_Stopping()), Force_Stopping(max_samples, Elim_Stopping()),  Force_Stopping(max_samples, Elim_Stopping())]
-# sampling_rules = [FWSampling(NoElimSR), FWSampling(NoElimSR), FWSampling(ElimSR)]
-
-# run()
