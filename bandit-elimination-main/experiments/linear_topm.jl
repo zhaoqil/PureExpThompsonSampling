@@ -30,13 +30,6 @@ for k = 1:d
     push!(arms, v)
 end
 
-# mid = Int(ceil(d/2))
-# θ = zeros(d)
-# θ[1] = 1
-# θ[2:Int(mid/2)] .= 0.9
-# θ[Int(mid/2)+1:mid] .= 0.8
-# θ[mid+1:end] = rand(rng, d-mid) .- 1   # uniform in [-0.5,0.5]
-
 alpha = 0.05
 θ = [1 - i * alpha for i in 0:d-1]
 

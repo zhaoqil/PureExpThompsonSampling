@@ -1,5 +1,4 @@
 import numpy as np
-import distribution
 from itertools import combinations
 import pandas as pd
 
@@ -15,24 +14,6 @@ def sphere(K, d):
     np.random.seed(10)
     theta_star = pd.read_csv('theta.csv', header=None).to_numpy().squeeze()
     X = pd.read_csv('arms.csv', header=None, delimiter='\t').to_numpy()
-    print(X.shape, theta_star.shape)
-
-#     X = np.random.randn(K, d)
-#     norms = np.linalg.norm(X, axis=1).reshape(K, 1)
-#     X /= norms
-#     min_pair = []
-#     min_norm = 10
-#     for i in range(len(X)):
-#         for j in range(i+1, len(X)):
-#             if np.linalg.norm(X[i] - X[j]) < min_norm:
-#                 min_pair = [i,j]
-#                 min_norm = np.linalg.norm(X[i] - X[j])
-            
-            
-#     theta_star = X[min_pair[0]] + .01*(X[min_pair[1]] - X[min_pair[0]])
-#     #np.random.randn(d)
-#     #theta_star = theta_star/np.linalg.norm(theta_star)
-#     return X, theta_star
     return X, theta_star
 
 def soare(d, alpha):
@@ -63,9 +44,7 @@ def topk(d, k):
     # set the relevant indices to one
     for i, indices in enumerate(all_combinations):
         indicator_vectors[i, indices] = 1
-    
-    # theta = np.random.rand(d)    
-    #theta_star = pd.read_csv('theta_topm.csv', header=None).to_numpy().squeeze()
+        
     theta_star = np.array([1 - i*alpha for i in range(d)])
     
     return np.eye(d), theta_star, indicator_vectors

@@ -1,12 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
-#from IPython.display import clear_output
 import multiprocessing as mp
 from bandit_type import Linear
 from utils import *
 import utils
-from distribution import *
-# import wandb
 
 class ThompsonSampling(Linear):
 
@@ -97,20 +94,15 @@ class TopTwoThetaAlgorithm(Linear):
             rec = np.argmax(self.Z @ self.theta)
             self.arms_recommended.append(rec)
             
-            #r = g/np.sqrt(t+1)
-            #self.l = self.l*np.exp(r - max(r))
-            #self.l = self.l/np.sum(self.l)
             ada.incur(-g)
             self.l = ada.act()
             self.pulled += self.l
-            #self.pulled[idx] += 1
             
             if t%logging_period == 0:
                 print('toptwo run', self.name, 'iter', t, "/", self.T, end="\r")
                 d = {'pulled':idx,'recommended':int(rec==self._best_idx)}
                 for i in range(self.X.shape[0]):
                     d[f'arm_{i}'] = self.pulled[i]/(t+1)
-                # wandb.log(d, step=t)
         
         quit = len(self.arms_recommended)
         rec = self.arms_recommended[-1]
@@ -135,6 +127,4 @@ class AdaHedge:
         eta = np.log(len(self.L)) / self.delta
         self.L += l
         m = np.min(l) - 1 / eta * np.log(u.T @ np.exp(-eta * (l - np.min(l))))
-        # println(η, " ", u, " ", u.T @ l, " ", -1 / η * np.log(u.T @ np.exp(-η * l)));
-        #@assert isfinite(m) and u.T @ l >= m - 1e-7 "hedge loss $(u.T @ l), Δ=$(self.delta), η=$eta, mix loss $m, u=$u, L=$(self.L)";
         self.delta += u.T @ l - m

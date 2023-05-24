@@ -52,24 +52,6 @@ end
 println(arms)
 writedlm("/home/jupyter-zli9/PureExpThompsonSampling/theta.csv", θ)
 writedlm("/home/jupyter-zli9/PureExpThompsonSampling/arms.csv", arms)
-#h5file = h5open("/home/jupyter-zli9/PureExpThompsonSampling/linear_instance.h5", "w")
-#h5write(h5file, "theta", θ)
-#h5write(h5file, "arms", arms)
-#h5close(h5file)
-#JLD2.save("/home/jupyter-zli9/PureExpThompsonSampling/linear_instance.h5", Dict("theta" => θ, "arms" => arms))
-
-# # θ = zeros(d)
-# # θ[1] = 1
-# # θ[2:Int(mid/2)] .= 0.9
-# # θ[Int(mid/2)+1:mid] .= 0.8
-# # θ[mid+1:end] = rand(rng, d-mid) .- 1   # uniform in [-0.5,0.5]
-
-
-#μ = [arm'θ for arm in arms]
-#topm_arms = istar(Topm(arms, m), θ)
-# println("min abs value of μ: ", minimum(abs.(μ)))
-# println("min gap: ", minimum(maximum(μ) .- maximum(μ[setdiff(1:K, Set([argmax(μ)]))])))
-# println("min gap topm: ", minimum(minimum(μ[topm_arms]) .- maximum(μ[setdiff(1:K, topm_arms)])))
 
 # # β = LinearThreshold(d, 1, 1, 1)
 # # β = GK16()
@@ -102,7 +84,7 @@ function run()
     # dump_stats(pep, θ, δ, β, stopping_rules, sampling_rules, elim_rules, data, repeats);
     
     data = collect(data)
-    writedlm("/home/jupyter-zli9/PureExpThompsonSampling/results_sphere_500.txt", data, '\t')
+    writedlm("/home/jupyter-zli9/PureExpThompsonSampling/results_sphere_500_LinGame.txt", data, '\t')
 
 #     # save
 #     isdir("experiments/results") || mkdir("experiments/results")

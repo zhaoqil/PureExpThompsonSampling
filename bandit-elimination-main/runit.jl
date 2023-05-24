@@ -86,7 +86,6 @@ function runit(seed, sampling, stopping, elim_rule::Union{NoElim,CompElim,StatEl
 
         # play arm
         play!(k, rng, pep, θ, S, N, Vinv, R)
-        # println("current N: ", N)
 
         # compute the best one
         res = zeros(K)
@@ -96,8 +95,6 @@ function runit(seed, sampling, stopping, elim_rule::Union{NoElim,CompElim,StatEl
         end
         best_idx = argmax(res)
         append!(rec_arr, best_idx)
-        # rec_arr_ret = rec_arr
-        # println("current rec arr: ", rec_arr)
 
         All_N = vcat(All_N, N)
     end
