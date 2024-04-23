@@ -49,6 +49,33 @@ def topk(d, k):
     
     return np.eye(d), theta_star, indicator_vectors
 
+def mvt(d,k):
+    eye = np.eye(k)
+    X = []
+    alpha1 = 1
+    alpha2 = 1
+    for seq in product(range(k), repeat=d):
+        x = [1]
+        for i in seq:
+            x.extend(eye[i])
+        for idx1,idx2 in combinations(range(d), 2):
+            i,j = seq[idx1], seq[idx2]
+            a = np.zeros((k,k))
+            #print(idx1, idx2, i,j, a.shape)
+            a[i,j] = 1*alpha2
+            x.extend(a.reshape(-1))
+        X.append(x)
+    X = np.array(X)
+    np.random.seed(50000)
+    thetastar = np.zeros(X.shape[1])
+    idx1 = 1
+    idx2 = 1
+    idx3 = 1
+    thetastar[d*k+idx1*idx2] = .8
+    thetastar[d*k+2*k**2+idx2*idx3] = .05
+    np.random.seed()
+    return X, thetastar
+
 
 def get_instance(name, params):
     if name=='soare':
@@ -57,4 +84,6 @@ def get_instance(name, params):
         f = sphere
     elif name=='topk':
         f = topk
+    elif name=='mvt':
+        f = mvt
     return f(**params)
