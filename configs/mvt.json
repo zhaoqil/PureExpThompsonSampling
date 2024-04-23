@@ -1,0 +1,28 @@
+{
+	"algs": [
+		{
+			"name": "ThompsonSamplingLinear",
+			"alg_class": "ThompsonSampling",
+			"active": true,
+			"params": {}
+		},
+		{
+			"name": "TopTwoThetaAlgorithm",
+			"alg_class": "TopTwoThetaAlgorithm",
+			"active": true,
+			"params": {}
+		}
+	],
+	"global": {
+		"exp_name": "MultivariateTesting",
+		"T": 3000,
+		"sigma":0.5,
+		"reps": 5,
+		"cpu": 60,
+		"parallelize": "mp",
+		"instance":{
+			"name":"mvt",
+			"params":{"k":6,"d":3}
+		}
+	}
+}
