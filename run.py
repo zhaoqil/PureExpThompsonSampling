@@ -15,24 +15,22 @@ import instance
 
 import utils
 import json
-import wandb
-
-    
+# import wandb
 
 def worker(alg, X, Y, f_star, T, sigma, ix):
     print('algorithm', alg, 'name', alg['name'])
     np.random.seed()
-    wandb.init(project="TTTS", 
-               name="experiment_run_{}".format(ix), 
-               group="experiment", 
-               config={ 
-                   "alg": alg, 
-               })
+#     wandb.init(project="TTTS", 
+#                name="experiment_run_{}".format(ix), 
+#                group="experiment", 
+#                config={ 
+#                    "alg": alg, 
+#                })
     algorithm_instance = utils.get_alg(alg, X, Y, f_star, T, sigma, ix)
     algorithm_instance.run(logging_period=100)
-    wandb.finish()
-    return algorithm_instance.arms_recommended, algorithm_instance.pulled
-
+#     wandb.finish()
+    return algorithm_instance.arms_recommended, algorithm_instance.pulled, algorithm_instance.num_samples, algorithm_instance.time_per_iter
+        
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
     #parser.add_argument('--T', type=int)
@@ -96,20 +94,25 @@ if __name__=='__main__':
         results = all_results[reps*i: reps*(i+1)]
         results_ar = np.array([r[0] for r in results])
         results_p = [np.array(r[1]) for r in results]
-        d_alg[alg['name']] ={'results_ar':results_ar, 'results_p':results_p}
-        plt.subplot(1,2,1)
-        m = (results_ar == idx_star).mean(axis=0)
-        s = (results_ar == idx_star).std(axis=0)/np.sqrt(reps)
-        plt.plot(xaxis, m)
-        plt.fill_between(xaxis, m - s, m + s, alpha=0.2, label=alg['alg_class'])
-        plt.subplot(1,2,2)
-        plt.plot(np.mean(results_p, axis=0))
+        results_ns = [r[2] for r in results]
+        results_t = [r[3] for r in results]
+        d_alg[alg['name']] ={'results_ar':results_ar, 'results_p':results_p, 'results_ns':results_ns, 'results_t':results_t}
+#         plt.subplot(1,2,1)
+#         m = (results_ar == idx_star).mean(axis=0)
+#         s = (results_ar == idx_star).std(axis=0)/np.sqrt(reps)
+#         plt.plot(xaxis, m)
+#         plt.fill_between(xaxis, m - s, m + s, alpha=0.2, label=alg['alg_class'])
+#         plt.subplot(1,2,2)
+#         plt.plot(np.mean(results_p, axis=0))
         d['algs'] = d_alg
-    with open(path+f'/results_{exp_name}.pkl', 'wb') as f:
+        
+    path = "/home/jupyter-zli9/PureExpThompsonSampling" # manually set path
+    with open(path+f'/results_{exp_name}_2.pkl', 'wb') as f:
         pickle.dump(d,f)
 
-    plt.xlabel('time')
-    plt.ylabel('identification rate')
-    #plt.title(f'K {K} d {d}')
-    plt.legend()
-    plt.savefig(path+'/results.png')
+#     plt.xlabel('time')
+#     plt.ylabel('identification rate')
+#     #plt.title(f'K {K} d {d}')
+#     plt.legend()
+#     plt.savefig(path+'/results.png')
+

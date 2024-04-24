@@ -6,7 +6,9 @@ from bandit_type import Linear
 from utils import *
 import utils
 from distribution import *
-import wandb
+# import wandb
+import random
+import time
 
 class ThompsonSampling(Linear):
 
@@ -16,6 +18,8 @@ class ThompsonSampling(Linear):
         self.Vinv = np.linalg.inv(self.V)
         self.pulled = np.zeros(X.shape[0])
         self._best_idx = np.argmax(X@theta_star)
+        self.num_samples = np.zeros(self.T)
+        self.time_per_iter = np.zeros(self.T)
 
     def run(self, logging_period=100):
         theta = np.zeros(self.d)
@@ -38,7 +42,7 @@ class ThompsonSampling(Linear):
                 d = {'recommended':int(rec==self._best_idx)}
                 for i in range(self.X.shape[0]):
                     d[f'arm_{i}'] = self.pulled[i]
-                wandb.log(d, step=t)
+#                 wandb.log(d, step=t)
 
 
 
@@ -49,15 +53,19 @@ class TopTwoThetaAlgorithm(Linear):
         self.B = np.matmul(X.reshape(-1,self.d,1), X.reshape(-1,1,self.d))
         self.Vinv = np.linalg.inv(self.V)
         self.toptwo = []
+        self.num_samples = []
+        self.time_per_iter = []
         self.pulled = np.zeros(X.shape[0])
-        self.k = 10
+        self.k = 1 # old version is 10, changed it to print number of samples used
         self._best_idx = np.argmax(self.Z@theta_star)
-        self.Vs = np.eye(len(self.theta_star))
-        self.Vsinv = 2*np.eye(len(self.theta_star))
+#         self.Vs = np.eye(len(self.theta_star))
+#         self.Vsinv = 2*np.eye(len(self.theta_star))
         
     def run(self, eta=10, logging_period=100):
         self.theta = np.ones(len(self.theta_star))#np.random.randn(len(self.theta_star))*10
         S = 0
+#         print("theta star: ", self.theta_star)
+#         print("theta hat: ", self.theta)
         self.l = np.ones(self.X.shape[0])/self.X.shape[0]
         ada = AdaHedge(self.X.shape[0])
         for t in range(self.T):
@@ -65,21 +73,30 @@ class TopTwoThetaAlgorithm(Linear):
             best_idx = np.argmax(self.Z@theta_1)
             theta_2s = []
             k = self.k
-            while len(theta_2s) < 20:
+            num_samples = 1
+            start_time = time.time()
+            
+            while len(theta_2s) < 20: # original version is 20
                 # draw k theta's and compute the best x at the same time to make it faster
+#                 print(self.Vinv)    
                 theta_2_mat = np.random.multivariate_normal(mean=self.theta, 
                                                             cov=self.Vinv, 
                                                             size=k)
+                num_samples += k
                 for tt in theta_2_mat:
                     if np.argmax(self.Z @ tt) != best_idx:
                         theta_2 = tt
                         theta_2s.append(tt) 
-                k = 2*k        
-                if k > 50000:
+                # k *= 2    
+                k += 1
+                if num_samples > 150000: # old version is 150000
                     break
-            if k > 50000:
+            if num_samples > 150000: # old version is 150000
                 break
 
+            runtime_curr = time.time() - start_time
+            self.time_per_iter.append(runtime_curr)
+            self.num_samples.append(num_samples)
             g = 0
             for theta_2 in theta_2s:
                 g += np.array([((theta_1 - theta_2).T@x)**2 for x in self.X])
@@ -90,39 +107,44 @@ class TopTwoThetaAlgorithm(Linear):
 
 
             self.V += np.outer(x_n, x_n)
-            self.Vinv = utils.fast_rank_one(self.Vinv, x_n)
+#             self.Vinv = np.linalg.inv(self.V)
             
-            # self.Vs += np.outer(x_n, x_n)*100/np.sqrt(self.T)
-            # self.Vsinv = np.linalg.inv(self.Vs)
+            self.Vinv = utils.fast_rank_one(self.Vinv, x_n)
 
             S += x_n * y_n
             self.theta = self.Vinv @ S
             rec = np.argmax(self.Z @ self.theta)
             self.arms_recommended.append(rec)
             
-            #r = g/np.sqrt(t+1)
-            #self.l = self.l*np.exp(r - max(r))
-            #self.l = self.l/np.sum(self.l)
+            
+#             r = g/np.sqrt(t+1)
+#             self.l = self.l*np.exp(r - max(r))
+#             self.l = self.l/np.sum(self.l)
             ada.incur(-g)
             self.l = ada.act()
-            self.pulled += self.l
-
+#             self.pulled += self.l
+            self.pulled[idx] += 1
+            
+#             print("theta star: ", self.theta_star)
+#             print("theta hat: ", self.theta)
+            print("l: ", self.l)
+            print("pulled idx: ", idx)
+            print("truth: ", self.Z @ self.theta_star)
+            print("recommendation: ", self.Z @ self.theta)
+            
             if t%logging_period == 0:
-                #print('t', t, 'norm', np.linalg.norm(g))
-                #print(theta_2, theta_1, best_idx, best_idx_2)
-                #print('l', self.l)
                 print('toptwo run', self.name, 'iter', t, "/", self.T, end="\r")
                 d = {'pulled':idx,'recommended':int(rec==self._best_idx)}
                 for i in range(self.X.shape[0]):
                     d[f'arm_{i}'] = self.pulled[i]/(t+1)
-                wandb.log(d, step=t)
+#                 wandb.log(d, step=t)
         
         quit = len(self.arms_recommended)
         rec = self.arms_recommended[-1]
         if quit < self.T:
             for i in range(quit, self.T):
                 self.arms_recommended.append(rec)
-
+                
 
 
 class TopTwoProjectionAlgorithm(Linear):
@@ -143,25 +165,10 @@ class TopTwoProjectionAlgorithm(Linear):
         for t in range(self.T):
             theta_1 = self.theta
             best_idx = np.argmax(self.X@theta_1)
-            best_idx_2 = best_idx
-            a = 0 
-            while best_idx == best_idx_2 and a < 50000:
-                # draw k theta's and compute the best x at the same time to make it faster
-                theta_2_mat = np.random.multivariate_normal(mean=self.theta, 
-                                                            cov=self.Vinv, 
-                                                            size=self.k)
-                for tt in theta_2_mat:
-                    if np.argmax(self.X @ tt) != best_idx:
-                        best_idx_2 = np.argmax(self.X @ tt)
-                        theta_2 = tt
-                        break
-                a+=self.k
-            if a >=50000:
-                print('BROKE EARLY', self.name)
-                break
+
+            theta_alts = [(self.alt(best_idx_2, best_idx), best_idx_2) for best_idx_2 in range(self.X.shape[0]) if best_idx_2 != best_idx]
+            g = sorted(theta_alts, key = lambda x: x[0][0])[0][0][1]
             
-            theta_2 = self.alt(best_idx_2, best_idx)
-            g = np.array([((theta_1 - theta_2).T@x)**2 for x in self.X])
             idx = np.random.choice(self.X.shape[0], p=self.l)
             x_n = self.X[idx]#self.X[max_idx]
             y_n = self.theta_star @ x_n + self.sigma * np.random.randn()
@@ -172,14 +179,10 @@ class TopTwoProjectionAlgorithm(Linear):
             self.theta = self.Vinv @ S
             rec = np.argmax(self.X @ self.theta)
             self.arms_recommended.append(rec)
-            #self.l = (1-2/(t+3))*self.l + 2/(t+3)*np.eye(len(self.l))[np.argmax(g)] 
-            #self.l = self.l*np.exp(20/np.sqrt(t+1)*g)
-            #self.l = self.l/np.sum(self.l)
+
             ada.incur(-g)
             self.l = ada.act()
             self.pulled = self.l
-
-
             
             if t%logging_period == 0:
                 A = np.array([self.X[0] - self.X[1],
@@ -191,7 +194,7 @@ class TopTwoProjectionAlgorithm(Linear):
                 d = {'pulled':idx,'recommended':int(rec==self._best_idx), 'rho':rho}
                 for i in range(self.X.shape[0]):
                     d[f'arm_{i}'] = self.pulled[i]
-                wandb.log(d, step=t)
+#                 wandb.log(d, step=t)
         
         quit = len(self.arms_recommended)
         rec = self.arms_recommended[-1]
@@ -207,21 +210,106 @@ class TopTwoProjectionAlgorithm(Linear):
         gap = (xstar-z)@self.theta
         var = (xstar-z).T@A@(xstar-z)
         a = self.theta - gap*A@(xstar-z)/var
-        return a
-    
+        g = np.array([((self.theta - a).T@x)**2 for x in self.X])
+        obj = g.T@self.l
+        return obj, g
+                
 
 
-class TopTwoAlgorithm(Linear):
+# class TopTwoProjectionAlgorithm(Linear):
+#     def __init__(self, X, Y, theta_star, T, sigma, name):
+#         super().__init__(X, Y, theta_star, T, sigma, name)
+#         self.B = np.matmul(X.reshape(-1,self.d,1), X.reshape(-1,1,self.d))
+#         self.Vinv = np.linalg.inv(self.V)
+#         self.toptwo = []
+#         self.pulled = np.zeros(X.shape[0])
+#         self.k = 10
+#         self._best_idx = np.argmax(X@theta_star)
         
+#     def run(self, eta=10, logging_period=100):
+#         self.theta = np.ones(self.d)
+#         S = 0
+#         self.l = np.ones(self.X.shape[0])/self.X.shape[0]
+#         ada = AdaHedge(self.X.shape[0])
+#         for t in range(self.T):
+#             theta_1 = self.theta
+#             best_idx = np.argmax(self.X@theta_1)
+#             best_idx_2 = best_idx
+#             a = 0 
+#             while best_idx == best_idx_2 and a < 50000:
+#                 # draw k theta's and compute the best x at the same time to make it faster
+#                 theta_2_mat = np.random.multivariate_normal(mean=self.theta, 
+#                                                             cov=self.Vinv, 
+#                                                             size=self.k)
+#                 for tt in theta_2_mat:
+#                     if np.argmax(self.X @ tt) != best_idx:
+#                         best_idx_2 = np.argmax(self.X @ tt)
+#                         theta_2 = tt
+#                         break
+#                 a+=self.k
+#             if a >=50000:
+#                 print('BROKE EARLY', self.name)
+#                 break
+            
+#             theta_2 = self.alt(best_idx_2, best_idx)
+#             g = np.array([((theta_1 - theta_2).T@x)**2 for x in self.X])
+#             idx = np.random.choice(self.X.shape[0], p=self.l)
+#             x_n = self.X[idx]#self.X[max_idx]
+#             y_n = self.theta_star @ x_n + self.sigma * np.random.randn()
+
+#             self.V += np.outer(x_n, x_n)
+#             self.Vinv = utils.fast_rank_one(self.Vinv, x_n)
+#             S += x_n * y_n
+#             self.theta = self.Vinv @ S
+#             rec = np.argmax(self.X @ self.theta)
+#             self.arms_recommended.append(rec)
+#             #self.l = (1-2/(t+3))*self.l + 2/(t+3)*np.eye(len(self.l))[np.argmax(g)] 
+#             #self.l = self.l*np.exp(20/np.sqrt(t+1)*g)
+#             #self.l = self.l/np.sum(self.l)
+#             ada.incur(-g)
+#             self.l = ada.act()
+#             self.pulled = self.l
+
+
+            
+#             if t%logging_period == 0:
+#                 A = np.array([self.X[0] - self.X[1],
+#                               self.X[0] - self.X[2]] )
+#                 print('toptwo run', self.name, 'iter', t, "/", self.T, end="\r")
+#                 p = utils.prob_region(A, self.theta, self.Vinv)
+#                 rho = (t+1)/(-np.log(max(1-p,.01)))
+#                 print('toptwo run', self.name, 'iter', t, "/", self.T, end="\r")
+#                 d = {'pulled':idx,'recommended':int(rec==self._best_idx), 'rho':rho}
+#                 for i in range(self.X.shape[0]):
+#                     d[f'arm_{i}'] = self.pulled[i]
+#                 wandb.log(d, step=t)
+        
+#         quit = len(self.arms_recommended)
+#         rec = self.arms_recommended[-1]
+#         if quit < self.T:
+#             for i in range(quit, self.T):
+#                 self.arms_recommended.append(rec)
+
+#     def alt(self, best_idx_2, best_idx):
+#         xstar = self.X[best_idx]
+#         z = self.X[best_idx_2]
+#         A = sum([np.outer(self.X[i], self.X[i])*self.l[i] for i in range(self.X.shape[0])])
+#         A = np.linalg.inv(A)
+#         gap = (xstar-z)@self.theta
+#         var = (xstar-z).T@A@(xstar-z)
+#         a = self.theta - gap*A@(xstar-z)/var
+#         return a
+    
+class TopTwoAlgorithm(Linear):    
     def __init__(self, X, Y, theta_star, T, sigma, name):
         super().__init__(X, Y, theta_star, T, sigma, name)
         self.B = np.matmul(X.reshape(-1,self.d,1), X.reshape(-1,1,self.d))
         self.Vinv = np.linalg.inv(self.V)
-        self.toptwo = []
-        self.pulled = []
+        self.pulled = np.zeros(X.shape[0])
+        self._best_idx = np.argmax(X@theta_star)
         self.k = 10
-        
-    def run(self, logging_period=1):
+
+    def run(self, logging_period=100):
         theta = np.zeros(self.d)
         S = 0
         
@@ -229,8 +317,7 @@ class TopTwoAlgorithm(Linear):
             theta_1 = np.random.multivariate_normal(theta, self.Vinv)
             best_idx = np.argmax(self.X @ theta_1)
             x_1 = self.X[best_idx]
-
-            # try it for a first time
+            
             theta_2 = np.random.multivariate_normal(theta, self.Vinv)
             best_idx_2 = np.argmax(self.X@theta_2)
 
@@ -240,35 +327,179 @@ class TopTwoAlgorithm(Linear):
                 theta_2_mat = np.random.multivariate_normal(mean=theta, 
                                                       cov=self.Vinv, size=self.k)
                 max_x2_vec = np.argmax(self.X @ theta_2_mat.transpose(), axis=0)
-                #print(max_x2_vec!=best_idx)
                 if any(max_x2_vec!=best_idx): # if there is some index that is different
-                    # find the first place where they are different
-                    #print(np.where(max_x2_vec != best_idx)[0])
                     best_idx_2 = max_x2_vec[np.where(max_x2_vec != best_idx)[0][0]]
-                a+=1
+                a += 1
                 if a > 10000:
-                    break
-            if a > 10000:
                     break
             
             x_2 = self.X[best_idx_2]
-            self.toptwo.append([best_idx, best_idx_2])
+            B = np.random.binomial(1, 0.5)
+            if B == 1:
+                # play x_2
+                x_n = self.X[best_idx_2]
+            else:
+                # play x_1
+                x_n = self.X[best_idx]
             
-
-            min_idx = np.argmin((x_1 - x_2) @ np.linalg.inv(self.V + self.B) @ (x_1 - x_2))
-            self.pulled.append(min_idx)
-            x_n = self.X[min_idx]
-            y_n = self.theta_star @ x_n + self.sigma * np.random.randn()
-
+            y_n = x_n @ self.theta_star + self.sigma*np.random.randn()
             self.V += np.outer(x_n, x_n)
             self.Vinv = utils.fast_rank_one(self.Vinv, x_n)
             S += x_n * y_n
-            theta = self.Vinv @ S
-            self.theta = theta
-            self.arms_recommended.append(np.argmax(self.X @ theta))
+            theta = np.linalg.inv(self.V) @ S
+            rec = np.argmax(self.X @ theta)
+            self.arms_recommended.append(rec)
+            self.pulled[best_idx] += 1
+            if t%logging_period == 0:
+                print('ts run', self.name, 'iter', t, "/", self.T, end="\r")
+                d = {'recommended':int(rec==self._best_idx)}
+                for i in range(self.X.shape[0]):
+                    d[f'arm_{i}'] = self.pulled[i]
+#                 wandb.log(d, step=t)    
 
+# class TopTwoAlgorithm(Linear):
+        
+#     def __init__(self, X, Y, theta_star, T, sigma, name):
+#         super().__init__(X, Y, theta_star, T, sigma, name)
+#         self.B = np.matmul(X.reshape(-1,self.d,1), X.reshape(-1,1,self.d))
+#         self.Vinv = np.linalg.inv(self.V)
+#         self.toptwo = []
+#         self.pulled = []
+#         self.k = 10
+        
+#     def run(self, logging_period=1):
+#         theta = np.zeros(self.d)
+#         S = 0
+        
+#         for t in range(self.T):
+#             theta_1 = np.random.multivariate_normal(theta, self.Vinv)
+#             best_idx = np.argmax(self.X @ theta_1)
+#             x_1 = self.X[best_idx]
+
+#             # try it for a first time
+#             theta_2 = np.random.multivariate_normal(theta, self.Vinv)
+#             best_idx_2 = np.argmax(self.X@theta_2)
+
+#             a = 0 
+#             while best_idx == best_idx_2:
+#                 # draw k theta's and compute the best x at the same time to make it faster
+#                 theta_2_mat = np.random.multivariate_normal(mean=theta, 
+#                                                       cov=self.Vinv, size=self.k)
+#                 max_x2_vec = np.argmax(self.X @ theta_2_mat.transpose(), axis=0)
+#                 #print(max_x2_vec!=best_idx)
+#                 if any(max_x2_vec!=best_idx): # if there is some index that is different
+#                     # find the first place where they are different
+#                     #print(np.where(max_x2_vec != best_idx)[0])
+#                     best_idx_2 = max_x2_vec[np.where(max_x2_vec != best_idx)[0][0]]
+#                 a+=1
+#                 if a > 10000:
+#                     break
+#             if a > 10000:
+#                     break
+            
+#             x_2 = self.X[best_idx_2]
+#             self.toptwo.append([best_idx, best_idx_2])
+            
+
+#             min_idx = np.argmin((x_1 - x_2) @ np.linalg.inv(self.V + self.B) @ (x_1 - x_2))
+#             self.pulled.append(min_idx)
+#             x_n = self.X[min_idx]
+#             y_n = self.theta_star @ x_n + self.sigma * np.random.randn()
+
+#             self.V += np.outer(x_n, x_n)
+#             self.Vinv = utils.fast_rank_one(self.Vinv, x_n)
+#             S += x_n * y_n
+#             theta = self.Vinv @ S
+#             self.theta = theta
+#             self.arms_recommended.append(np.argmax(self.X @ theta))
+
+#             if t%logging_period == 0:
+#                 print('toptwo run', self.name, 'iter', t, "/", self.T, end="\r")
+        
+#         quit = len(self.arms_recommended)
+#         rec = self.arms_recommended[-1]
+#         if quit < self.T:
+#             for i in range(quit, self.T):
+#                 self.arms_recommended.append(rec)
+
+class TopTwoRandExp(Linear):
+    def __init__(self, X, Y, theta_star, T, sigma, name):
+        super().__init__(X, Y, theta_star, T, sigma, name)
+        self.Z = Y
+        self.B = np.matmul(X.reshape(-1,self.d,1), X.reshape(-1,1,self.d))
+        self.Vinv = np.linalg.inv(self.V)
+        self.toptwo = []
+        self.num_samples = []
+        self.time_per_iter = []
+        self.pulled = np.zeros(X.shape[0])
+        self.k = 1 # old version is 10, changed it to print number of samples used
+        self._best_idx = np.argmax(self.Z@theta_star)
+#         self.Vs = np.eye(len(self.theta_star))
+#         self.Vsinv = 2*np.eye(len(self.theta_star))
+        
+    def run(self, eta=10, logging_period=100):
+        self.theta = np.ones(len(self.theta_star))#np.random.randn(len(self.theta_star))*10
+        S = 0
+        self.l = np.ones(self.X.shape[0])/self.X.shape[0]
+        ada = AdaHedge(self.X.shape[0])
+        for t in range(self.T):
+            theta_1 = self.theta
+            best_idx = np.argmax(self.Z@theta_1)
+            theta_2s = []
+            k = self.k
+            num_samples = 1
+            start_time = time.time()
+            while len(theta_2s) < 1: # original version is 20
+                # draw k theta's and compute the best x at the same time to make it faster
+                theta_2_mat = np.random.multivariate_normal(mean=self.theta, 
+                                                            cov=self.Vinv, 
+                                                            size=k)
+                num_samples += k
+                for tt in theta_2_mat:
+                    if np.argmax(self.Z @ tt) != best_idx:
+                        theta_2 = tt
+                        theta_2s.append(tt) 
+                # k *= 2    
+                k += 1
+                if num_samples > 1000: # old version is 150000
+                    break
+            if num_samples > 1000: # old version is 150000
+                break
+
+            runtime_curr = time.time() - start_time
+            self.time_per_iter.append(runtime_curr)
+            self.num_samples.append(num_samples)
+            g = 0
+            for theta_2 in theta_2s:
+                g += np.array([((theta_1 - theta_2).T@x)**2 for x in self.X])
+            g = g/len(theta_2s)
+            idx = np.random.choice(self.X.shape[0], p=self.l)
+            x_n = self.X[idx]
+            y_n = self.theta_star @ x_n + self.sigma * np.random.randn()
+
+
+            self.V += np.outer(x_n, x_n)
+            self.Vinv = utils.fast_rank_one(self.Vinv, x_n)
+
+            S += x_n * y_n
+            self.theta = self.Vinv @ S
+            rec = np.argmax(self.Z @ self.theta)
+            self.arms_recommended.append(rec)
+            
+            #r = g/np.sqrt(t+1)
+            #self.l = self.l*np.exp(r - max(r))
+            #self.l = self.l/np.sum(self.l)
+            ada.incur(-g)
+            self.l = ada.act()
+            self.pulled += self.l
+            #self.pulled[idx] += 1
+            
             if t%logging_period == 0:
                 print('toptwo run', self.name, 'iter', t, "/", self.T, end="\r")
+                d = {'pulled':idx,'recommended':int(rec==self._best_idx)}
+                for i in range(self.X.shape[0]):
+                    d[f'arm_{i}'] = self.pulled[i]/(t+1)
+#                 wandb.log(d, step=t)
         
         quit = len(self.arms_recommended)
         rec = self.arms_recommended[-1]
@@ -276,7 +507,7 @@ class TopTwoAlgorithm(Linear):
             for i in range(quit, self.T):
                 self.arms_recommended.append(rec)
 
-                    
+
 class XYStatic(Linear):
     
     def __init__(self, X, Y, theta_star, T, sigma, name):
@@ -305,7 +536,7 @@ class XYStatic(Linear):
             d = {'pulled':idx,'recommended':int(rec==self._best_idx)}
             for i in range(self.X.shape[0]):
                 d[f'arm_{i}'] = self.pulled[i]/(t+1)
-            wandb.log(d, step=t)        
+#             wandb.log(d, step=t)        
             if t%logging_period == 0:
                 print('xy static run', self.name, 'iter', t, "/", self.T, end="\r")
 

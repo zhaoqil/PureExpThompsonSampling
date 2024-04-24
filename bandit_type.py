@@ -10,7 +10,7 @@ class Linear():
         self.n, self.d = X.shape
         self.theta_star = theta_star
         
-        self.V = np.eye(self.d)
+        self.V = 0.1*np.eye(self.d)
 
         self.T = T  # time steps
         self.sigma = sigma
